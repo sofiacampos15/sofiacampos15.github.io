@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Disciplina Métodos Quantitativos Aplicados à Ciência Política</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Sofia Guimarães Campos - 20/0055038" />
+    <link href="Lista3SofiaApresentacao_files/remark-css-0.0.1/rladies.css" rel="stylesheet" />
+    <link href="Lista3SofiaApresentacao_files/remark-css-0.0.1/rladies-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Disciplina Métodos Quantitativos Aplicados à Ciência Política
+### Sofia Guimarães Campos - 20/0055038
+### Novembro de 2020
+
+---
+
+
+
+
+# Dados de Licenciamento Ambiental do IBAMA
+
+
+- O objetivo desse trabalho é observar a frequência de empreendimento e atividades licenciadas no Brasil nos ultimos anos (2010 - 2019)
+
+- Para isso iremos analisar as tipologias de empreendimentos e atividades com maior número de pedidos de licenças e que passaram pelo **licenciamento trifásico** - Licença Prévia, Licença de Instalação e Licença de Operação.
+
+- Portanto não entrarão na análise, as Autorizações, Anuências, Retificações e Renovação de Licenças, bem como outros tipos de licenças (Licença Único ou Especial, por exemplo).
+
+---
+
+## Importando banco de dados
+
+- As informações foram acessadas pelo banco de Dados Abertos do IBAMA no [link](http://dadosabertos.ibama.gov.br/dataset/relatorio-de-licencas-ambientais-de-atividades-e-empreendimentos-emitidas-pelo-ibama)
+
+- O formato do arquivo utilizado é (*.csv*)
+
+
+
+```r
+licencas &lt;- read_csv2("sislic-licencas.csv")
+janitor::clean_names(licencas)
+```
+
+```
+## # A tibble: 10,231 x 10
+##    des_tipolicenca num_licenca dat_emissao dat_vencimento nom_empreendime~
+##    &lt;chr&gt;           &lt;chr&gt;       &lt;chr&gt;       &lt;chr&gt;          &lt;chr&gt;           
+##  1 Anuência        538/2011    06/07/2011  06/07/2016     Perfuração Marí~
+##  2 Anuência        538*/2011   06/07/2011  06/07/2016     Perfuração - Bl~
+##  3 Anuência        616/2011    21/07/2011  31/12/2012     Atividade de Pe~
+##  4 Anuência        633/2011    25/07/2011  28/02/2016     Perfuração Marí~
+##  5 Anuência        638/2011    27/07/2011  28/02/2016     Perfuração Marí~
+##  6 Anuência        678/2011    04/08/2011  29/04/2011     Extração minera~
+##  7 Anuência        766/2011    02/09/2011  28/04/2013     Perfuração Marí~
+##  8 Anuência        765/2011    02/09/2011  14/02/2014     Perfuração Marí~
+##  9 Anuência        917/2011    07/10/2011  31/12/2012     Atividade de Pe~
+## 10 Anuência        957/2011    19/10/2011  25/02/2014     Ampliação do Si~
+## # ... with 10,221 more rows, and 5 more variables: nom_pessoa &lt;chr&gt;,
+## #   num_processo_ibama &lt;chr&gt;, des_tipologia &lt;chr&gt;,
+## #   ultima_atualizacao_relatorio &lt;chr&gt;, pac &lt;chr&gt;
+```
+
+```r
+glimpse(licencas)
+```
+
+```
+## Rows: 10,231
+## Columns: 10
+## $ DES_TIPOLICENCA                &lt;chr&gt; "Anuência", "Anuência", "Anuência", ...
+## $ NUM_LICENCA                    &lt;chr&gt; "538/2011", "538*/2011", "616/2011",...
+## $ DAT_EMISSAO                    &lt;chr&gt; "06/07/2011", "06/07/2011", "21/07/2...
+## $ DAT_VENCIMENTO                 &lt;chr&gt; "06/07/2016", "06/07/2016", "31/12/2...
+## $ NOM_EMPREENDIMENTO             &lt;chr&gt; "Perfuração Marítima - Bloco BM-C-34...
+## $ NOM_PESSOA                     &lt;chr&gt; "BP ENERGY DO BRASIL LTDA", "BP ENER...
+## $ NUM_PROCESSO_IBAMA             &lt;chr&gt; "02022.003671/2006-01", "02022.01065...
+## $ DES_TIPOLOGIA                  &lt;chr&gt; "Petróleo e Gás - Perfuração", "Petr...
+## $ `Última Atualização Relatório` &lt;chr&gt; "25/10/2020 19:02", "25/10/2020 19:0...
+## $ PAC                            &lt;chr&gt; "No", "No", "No", "No", "No", "No", ...
+```
+
+
+
+```r
+library(knitr)
+kable(head(licencas, 10))
+```
+
+
+
+|DES_TIPOLICENCA |NUM_LICENCA |DAT_EMISSAO |DAT_VENCIMENTO |NOM_EMPREENDIMENTO                                                            |NOM_PESSOA                           |NUM_PROCESSO_IBAMA   |DES_TIPOLOGIA               |Última Atualização Relatório |PAC |
+|:---------------|:-----------|:-----------|:--------------|:-----------------------------------------------------------------------------|:------------------------------------|:--------------------|:---------------------------|:----------------------------|:---|
+|Anuência        |538/2011    |06/07/2011  |06/07/2016     |Perfuração Marítima - Bloco BM-C-34 - Bacia de Campos                         |BP ENERGY DO BRASIL LTDA             |02022.003671/2006-01 |Petróleo e Gás - Perfuração |25/10/2020 19:02             |No  |
+|Anuência        |538*/2011   |06/07/2011  |06/07/2016     |Perfuração - Bloco BM-C-32 - Bacia de Campos                                  |BP ENERGY DO BRASIL LTDA             |02022.010659/2004-83 |Petróleo e Gás - Perfuração |25/10/2020 19:02             |No  |
+|Anuência        |616/2011    |21/07/2011  |31/12/2012     |Atividade de Perfuração Marítima na àrea Geográfica da Bacia de Campos - AGBC |PETROBRAS S.A. / E&amp;P UN-RIO          |02001.005368/2003-31 |Petróleo e Gás - Perfuração |25/10/2020 19:02             |No  |
+|Anuência        |633/2011    |25/07/2011  |28/02/2016     |Perfuração Marítima - Bacias de Santos e Pelotas                              |PETROBRAS S.A. / E&amp;P UN-RIO          |02022.003032/2005-57 |Petróleo e Gás - Perfuração |25/10/2020 19:02             |No  |
+|Anuência        |638/2011    |27/07/2011  |28/02/2016     |Perfuração Marítima - Bacias de Santos e Pelotas                              |PETROBRAS S.A. / E&amp;P UN-RIO          |02022.003032/2005-57 |Petróleo e Gás - Perfuração |25/10/2020 19:02             |No  |
+|Anuência        |678/2011    |04/08/2011  |29/04/2011     |Extração mineral de Ferro e Manganês - Morro do Urucum                        |MINERAÇÃO CORUMBAENSE REUNIDA S/A    |02001.001696/90-19   |Mineração                   |25/10/2020 19:02             |No  |
+|Anuência        |766/2011    |02/09/2011  |28/04/2013     |Perfuração Marítima Blaford Dolfin, Bloco BM-S-60, Bacia de Santos            |SONANGOL HIDROCARBONETOS BRASIL LTDA |02022.002245/2008-12 |Petróleo e Gás - Perfuração |25/10/2020 19:02             |No  |
+|Anuência        |765/2011    |02/09/2011  |14/02/2014     |Perfuração Marítima - Blocos BM-C-45 e BM-C-46 - Bacia de Campos              |SONANGOL HIDROCARBONETOS BRASIL LTDA |02022.002620/2008-16 |Petróleo e Gás - Perfuração |25/10/2020 19:02             |No  |
+|Anuência        |917/2011    |07/10/2011  |31/12/2012     |Atividade de Perfuração Marítima na àrea Geográfica da Bacia de Campos - AGBC |PETROBRAS S.A. / E&amp;P UN-RIO          |02001.005368/2003-31 |Petróleo e Gás - Perfuração |25/10/2020 19:02             |No  |
+|Anuência        |957/2011    |19/10/2011  |25/02/2014     |Ampliação do Sistema de Injeção de Água - Campo de Ubarana - Bacia Potiguar   |PETRÓLEO BRASILEIRO S/A - PETROBRÁS  |02022.002514/2006-71 |Petróleo e Gás - Produção   |25/10/2020 19:02             |No  |
+
+---
+
+## Tratando os dados para análise
+
+- O banco de dados de licenciamento ambiental do IBAMA é composto por variáveis categóricas. Para melhor trabalhar os dados é preciso fazer algumas adequações.
+
++ 1. Transformar o formato da variável **DAT_EMISSAO** e **DAT_VENCIMENTO** para o formato de **data** e criar novas variáveis de **ano_emissao** e **ano_vencimento**, respectivamente, com o ano em que o documento referente ao processo de licenciamento ambiental foi emitido e o ano do seu prazo de validade.
+
+
+
+```r
+licencas &lt;- licencas %&gt;%
+  mutate(emissao =  dmy(DAT_EMISSAO)) %&gt;%
+  mutate(
+    ano_emissao = year(emissao))
+```
+
+
+```r
+licencas &lt;-  licencas %&gt;%
+  mutate(vencimento = dmy(DAT_VENCIMENTO)) %&gt;%
+  mutate(
+    ano_validade = year(vencimento))
+```
+
+---
+
+## Tratando os dados para análise
+
+- No nosso bando de dados, as respostas estão, marjoritariamente, em formato de texto, por isso, é necessário **limpar** as informações.
+
+- Existem diversas funções que nos ajudam a trabalhar com dados de textos, algumas estão compiladas no que é conhecido como **expressões regulares**
+
+#### 1. Eliminar letras maiusculas
+
+
+```r
+licencas &lt;- licencas %&gt;% 
+  mutate_if(is.character, tolower)
+```
+
+---
+
+## Tratando os dados para analise
+
+#### 3. Remover acentos
+
+- Para isso, foi criada uma função, facilitando a limpeza de todo o banco de dados de forma conjunta.
+
+- Note que ao criar a função ela fica armazenada no seu **environment**
+
+---
+
+####Executando:
+
+
+```r
+RemoveAcentos &lt;- function(textoComAcentos) {
+  
+  # Se nao foi informado texto
+  if(!is.character(textoComAcentos)){
+    on.exit()
+  }
+  
+  # Letras com acentos
+  letrasComAcentos &lt;- "áéíóúÁÉÍÓÚýÝàèìòùÀÈÌÒÙâêîôûÂÊÎÔÛãõÃÕñÑäëïöüÄËÏÖÜÿçÇ´`^~¨"
+  
+  # Letras equivalentes sem acentos
+  letrasSemAcentos &lt;- "aeiouAEIOUyYaeiouAEIOUaeiouAEIOUaoAOnNaeiouAEIOUycC     "
+  
+  textoSemAcentos &lt;- chartr(
+    old = letrasComAcentos,
+    new = letrasSemAcentos,
+    x = textoComAcentos
+  ) 
+  
+  # Retorno da funcao
+  return(textoSemAcentos)
+}
+```
+
+###### Para aplicar a função ao nosso banco de dados:
+
+
+
+```r
+licencas &lt;-  licencas %&gt;% 
+  mutate_if(is.character, RemoveAcentos)
+```
+
+---
+
+## Tratando os dados para analise
+
+#### 4. Renomeando variáveis
+
+- Para melhor compreensão e trabalho nos códigos iremos alterar os nomes das variáveis.
+
+
+```r
+licencas &lt;- licencas %&gt;%
+  rename (tipo_licenca = DES_TIPOLICENCA,
+          num_ano = NUM_LICENCA,
+          empreedimento = NOM_EMPREENDIMENTO, pessoa = NOM_PESSOA,
+          processo_ibama = NUM_PROCESSO_IBAMA, tipologia = DES_TIPOLOGIA)
+```
+
+
+---
+
+## Adequando as variaveis necessárias para análise
+
+- A variável **tipologia** tem respostas separadas com **-**, desse modo, para limpar as informações é necessário separar as respotas sem prejuízo do entendimento
+
++ Separando os dados da variável **tipologia** e criando a categoria que será usada para analise **tipologia_licenca**'
+
++ A categoria **tipologia_licenca** contém os tipos de empreedimento e atividades licenciados pelo IBAMA e a categoria **tipologia_outro** contém observações que não nos interressam, pois apenas especificam os dados da primeira variável. .
+
+
+```r
+licencas &lt;-  licencas %&gt;%
+  separate(tipologia, c("tipologia_licenca", "tipologia_outro"),
+           sep = "-", extra = "merge", fill = "right")
+```
+
+---
+
+## Adequando as variaveis necessárias para análise
+
+
+- A variável **tipo_licenca** especifica em qual etapa (tipo) do licenciamento ambiental o empreedimento ou atividades está. Contudo, a variável é extensa e pode ser categorizada de uma melhor forma: criando duas variáveis uma com a **situação** da licença e outra com o **tipo** da licenca propriamente dito.
+ 
+ + A categoria de **situação** tem como respostas: Anuência, Autorização, Indeferimento, Prorrogação, Renovação e Retificação. Todas relacionadas as licenças.
+ 
+ + A categoria de **tipo** especifica a licença. Sendo as respostas:
+ 
+- INDLINC: Indeferencia de Lincenças
+- LP: Licença Prévia
+- LAU: Licença única (operação e instalação)
+- LO: Licença e Operacação
+- LI: Licença de Instalação
+- ACCTMB: Autorização de Captura e Coleta e Transporte de Material Biológico
+- ASV: Autorização de Supressão de Vegetação
+-LE: Licença Especial
+-AESP: Autorização Especial (Quando o empreendimento não é permanente)
+- LPS: Licença de Pesquisa Sismica
+- AAP: Autorização de Abertura de Picada - - OUT: Anuencias, Autorizaçoes outras
+---
+
+##Executando:
+
+
+```r
+licencas &lt;-  licencas %&gt;%
+  mutate(situacao = case_when(
+    str_detect(tolower(tipo_licenca), "anuencia") ~ "Anuencia",
+    str_detect(tolower(tipo_licenca), "retificacao da renovacao") ~ "Retificacao da Renovacao",
+    str_detect(tolower(tipo_licenca), "retificacao de autorizacao")  ~ "Retificacao",
+    str_detect(tolower(tipo_licenca), "renovacao de autorizacao") ~ "Renovacao",
+    str_detect(tolower(tipo_licenca), "renovacao de licenca") ~ "Renovacao",
+    str_detect(tolower(tipo_licenca), "retificacao da licenca") ~ "Retificacao",
+    str_detect(tolower(tipo_licenca), "retificacao de licenca") ~ "Retificacao",
+    str_detect(tolower(tipo_licenca), "autorizacao") ~ "Autorizacao",
+    str_detect(tolower(tipo_licenca), "autorizacao especial") ~ "Autorizacao Especial",
+    str_detect(tolower(tipo_licenca), "indeferimento") ~ "Indeferimento",
+    str_detect(tolower(tipo_licenca), "prorrogacao") ~ "Prorrogacao",
+    str_detect(tolower(tipo_licenca), "licenca") ~ "Licenca",
+            TRUE ~ tipo_licenca))
+```
+
+---
+
+## Executando: 
+
+
+```r
+licencas &lt;-  licencas %&gt;%
+ mutate(tipo = case_when(
+    str_detect(tolower(tipo_licenca), "indeferimento de licenca") ~ "INDLINC",
+    str_detect(tolower(tipo_licenca), "licenca previa") ~ "LP",
+    str_detect(tolower(tipo_licenca), "licenca de instalacao e operacao") ~ "LAU",
+    str_detect(tolower(tipo_licenca), "licenca de operacao")  ~ "LO",
+    str_detect(tolower(tipo_licenca), "licenca de instalacao") ~ "LI",
+    str_detect(tolower(tipo_licenca), "captura, coleta e transporte de material biologico")
+    ~ "ACCTMB",
+   str_detect(tolower(tipo_licenca), "supressao de vegetacao") ~ "ASV",
+   str_detect(tolower(tipo_licenca), "licenca especial") ~ "LE",
+   str_detect(tolower(tipo_licenca), "especial") ~ "AESP",
+   str_detect(tolower(tipo_licenca), "pesquisa sismica") ~ "LPS",
+   str_detect(tolower(tipo_licenca), "abertura de picada") ~ "AAP",
+   str_detect(tolower(tipo_licenca), "anuencia") ~ "OUT",
+   str_detect(tolower(tipo_licenca), "autorizacao") ~ "OUT",
+   str_detect(tolower(tipo_licenca), "indeferimento") ~ "OUT",
+   TRUE ~ tipo_licenca))
+```
+
+
+---
+
+######Gráfico 1: Relacionando os tipos de documentos do processo de licenciamento com as suas respectivas situações, podemos notar quais tipos são mais retificados, prorrogados, indeferidos e renovados, o que mostra em quais etapadas do licenciamento ambiental podem ocorrer "as burocracias" do processo, geralmente evocadas nos debates sobre a celeridade do processo de licenciamento ambiental
+
+- As cores são acessíveis para pessoas daltônicas
+
+
+
+![](Lista3SofiaApresentacao_files/figure-html/unnamed-chunk-12-1.png)&lt;!-- --&gt;
+
+---
+
+## Criando um novo banco de dados para plotar os gráficos
+
+- Vamos selecionar e filtrar apenas as informações sobre as tipologias de empreendimentos e atividades que passaram pelo **licenciamento trifásico** - Licença Prévia (LP), Licença de Instalação (LI) e Licença de Operação (LO) - entre os anos de 2010 até 2019.
+
+- Vamos criar também uma nova variável de **tempo da licenca**: quanto tempo passa entre a emissao da licenca e a sua validade.
+
+
+```r
+dados_licenciamento &lt;- licencas %&gt;%
+  select(emissao, ano_emissao, ano_validade, situacao, tipo, tipologia_licenca,
+         empreedimento, pessoa) %&gt;%
+  filter(situacao %in% c("Licenca"),
+         tipo %in% c("LP", "LI", "LO"),
+         ano_emissao %in% c(2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019)) %&gt;%
+  mutate(tempo_licenca = (ano_validade - ano_emissao))
+```
+
+---
+
+###Tabela do novo banco de dados
+
+```r
+kable(head(dados_licenciamento, 10))
+```
+
+
+
+|emissao    | ano_emissao| ano_validade|situacao |tipo |tipologia_licenca               |empreedimento                                                                                                               |pessoa                                                | tempo_licenca|
+|:----------|-----------:|------------:|:--------|:----|:-------------------------------|:---------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------|-------------:|
+|2010-01-07 |        2010|         2012|Licenca  |LI   |estruturas rodoviarias          |br 324/ba (salvador - feira de santana ) &amp; br-116/ba (feira de santana - div. ba/mg )                                       |viabahia concessionaria de rodovias sa                |             2|
+|2010-01-08 |        2010|         2013|Licenca  |LI   |estruturas rodoviarias          |br 163 - trecho divisa mt/pa                                                                                                |dnit-departamento nacional de infraest de transportes |             3|
+|2010-01-13 |        2010|         2013|Licenca  |LI   |mineracao                       |mineracao de ferro na flona de carajas                                                                                      |vale s.a.                                             |             3|
+|2010-01-18 |        2010|         2013|Licenca  |LI   |petroleo e gas                  |sistema piloto de producao e escoamento de petroleo e gas natural - polo de tupi - bloco bm-s-11 - bacia de santos          |petrobras s.a. / e&amp;p un-rio                           |             3|
+|2010-01-21 |        2010|         2014|Licenca  |LI   |estruturas rodoviarias          |br-050/go - entr. br-352/go-210(b)/330 (catalao) - div. go/mg km 285,5 - km 314,0                                           |dnit-departamento nacional de infraest de transportes |             4|
+|2010-01-26 |        2010|         2012|Licenca  |LI   |petroleo e gas                  |teste de longa duracao no bloco bm-s-40, bacia de santos                                                                    |petrobras - petroleo brasileiro s.a.                  |             2|
+|2010-02-03 |        2010|         2012|Licenca  |LI   |estruturas rodoviarias          |br-116/sp - segmento entre os km 447+000 e km 450+000: implantacao de pista marginal                                        |autopista regis bittencourt s/a                       |             2|
+|2010-02-11 |        2010|         2012|Licenca  |LI   |transporte hidroviario maritimo |porto organizado de areia branca: ampliacao                                                                                 |companhia docas do rio grande do norte                |             2|
+|2010-02-12 |        2010|         2012|Licenca  |LI   |linhas de transmissao           |lt coletora porto velho &lt;U+0096&gt; porto velho c1/c2 - lote a 007/2008                                                        |centrais eletricas do norte do brasil s/a eletronorte |             2|
+|2010-03-04 |        2010|         2012|Licenca  |LI   |mineracao                       |jazida de saibro j12 - obra de pavimentacao da br-163 - lote 1.1 - subtrecho castelo dos sonhos - vila alvorada da amazonia |contern construcoes e comercio ltda                   |             2|
+
+---
+
+######Grafico 2: Mostra as tipologias de empreedimento e atividades mais licenciados através do **licenciamento trifásico** pelo IBAMA no Brasil entre os anos de 2010 a 2019.
+
+![](Lista3SofiaApresentacao_files/figure-html/unnamed-chunk-15-1.png)&lt;!-- --&gt;
+
+---
+
+######Gráfico 3: Mostra a evolução por ano das tipologias de empreedimento e atividades mais licenciados através do **licenciamento trifásico** pleo IBAMA no Brasil
+
+![](Lista3SofiaApresentacao_files/figure-html/unnamed-chunk-16-1.png)&lt;!-- --&gt;
+
+
+---
+
+######Gráfico 4: Quanto tempo cada tipologia de empreedimento e atividade demora para completar o **licenciamento trifasico** considerando as retificações e renovação de licença, assim, temos um tempo estimado contando com todos os "entraves" ocorridos.
+
+
+
+
+
+
+
+![](Lista3SofiaApresentacao_files/figure-html/unnamed-chunk-19-1.png)&lt;!-- --&gt;
+
+
+---
+
+# Referências
+
+[Thomas Neitmann - ggchart](https://thomas-neitmann.github.io/ggcharts/index.html)
+
+[Como alterar escalas de cores - daltônicos](https://pt.stackoverflow.com/questions/452569/como-alterar-a-escala-de-cores-em-um-gr%C3%A1fico-no-r)
+
+[Tutorial ggplot](http://r-statistics.co/ggplot2-Tutorial-With-R.html)
+
+[Yihui - knitr](https://yihui.org/knitr/options/#plots)
+
+[Comunicando seus resultados - Beatriz Milz](https://beatrizmilz.github.io/apresentacao_RLadies_xaringan/#27)
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create();
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
