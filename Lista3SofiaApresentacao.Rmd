@@ -1,0 +1,396 @@
+---
+title: "Disciplina Métodos Quantitativos Aplicados à Ciência Política"
+author: "Sofia Guimarães Campos - 20/0055038"
+date: "Novembro de 2020"
+output: 
+  xaringan::moon_reader:
+    css: ["rladies", "rladies-fonts"]
+  lib_dir: libs 
+  nature:
+  highlightLines: true
+  countIncrementalSlides: false
+
+
+---
+
+```{r, echo FALSE, message=FALSE, warning = F, include=FALSE}
+library(readr)
+library(lubridate)
+library(tidyverse)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(RColorBrewer)
+library(knitr)
+library(rmarkdown)
+library(ggcharts)
+```
+
+# Dados de Licenciamento Ambiental do IBAMA
+
+
+- O objetivo desse trabalho é observar a frequência de empreendimento e atividades licenciadas no Brasil nos ultimos anos (2010 - 2019)
+
+- Para isso iremos analisar as tipologias de empreendimentos e atividades com maior número de pedidos de licenças e que passaram pelo **licenciamento trifásico** - Licença Prévia, Licença de Instalação e Licença de Operação.
+
+- Portanto não entrarão na análise, as Autorizações, Anuências, Retificações e Renovação de Licenças, bem como outros tipos de licenças (Licença Único ou Especial, por exemplo).
+
+---
+
+## Importando banco de dados
+
+- As informações foram acessadas pelo banco de Dados Abertos do IBAMA no [link](http://dadosabertos.ibama.gov.br/dataset/relatorio-de-licencas-ambientais-de-atividades-e-empreendimentos-emitidas-pelo-ibama)
+
+- O formato do arquivo utilizado é (*.csv*)
+
+
+```{r, echo=TRUE, message = FALSE, warning = FALSE}
+
+licencas <- read_csv2("sislic-licencas.csv")
+janitor::clean_names(licencas)
+glimpse(licencas)
+
+
+```
+
+
+```{r, bando de dados}
+
+library(knitr)
+kable(head(licencas, 10))
+
+```
+
+---
+
+## Tratando os dados para análise
+
+- O banco de dados de licenciamento ambiental do IBAMA é composto por variáveis categóricas. Para melhor trabalhar os dados é preciso fazer algumas adequações.
+
++ 1. Transformar o formato da variável **DAT_EMISSAO** e **DAT_VENCIMENTO** para o formato de **data** e criar novas variáveis de **ano_emissao** e **ano_vencimento**, respectivamente, com o ano em que o documento referente ao processo de licenciamento ambiental foi emitido e o ano do seu prazo de validade.
+
+
+```{r}
+licencas <- licencas %>%
+  mutate(emissao =  dmy(DAT_EMISSAO)) %>%
+  mutate(
+    ano_emissao = year(emissao))
+```
+
+```{r}
+
+licencas <-  licencas %>%
+  mutate(vencimento = dmy(DAT_VENCIMENTO)) %>%
+  mutate(
+    ano_validade = year(vencimento))
+
+```
+
+---
+
+## Tratando os dados para análise
+
+- No nosso bando de dados, as respostas estão, marjoritariamente, em formato de texto, por isso, é necessário **limpar** as informações.
+
+- Existem diversas funções que nos ajudam a trabalhar com dados de textos, algumas estão compiladas no que é conhecido como **expressões regulares**
+
+#### 1. Eliminar letras maiusculas
+
+```{r}
+licencas <- licencas %>% 
+  mutate_if(is.character, tolower)
+```
+
+---
+
+## Tratando os dados para analise
+
+#### 3. Remover acentos
+
+- Para isso, foi criada uma função, facilitando a limpeza de todo o banco de dados de forma conjunta.
+
+- Note que ao criar a função ela fica armazenada no seu **environment**
+
+---
+
+####Executando:
+
+```{r}
+RemoveAcentos <- function(textoComAcentos) {
+  
+  # Se nao foi informado texto
+  if(!is.character(textoComAcentos)){
+    on.exit()
+  }
+  
+  # Letras com acentos
+  letrasComAcentos <- "áéíóúÁÉÍÓÚýÝàèìòùÀÈÌÒÙâêîôûÂÊÎÔÛãõÃÕñÑäëïöüÄËÏÖÜÿçÇ´`^~¨"
+  
+  # Letras equivalentes sem acentos
+  letrasSemAcentos <- "aeiouAEIOUyYaeiouAEIOUaeiouAEIOUaoAOnNaeiouAEIOUycC     "
+  
+  textoSemAcentos <- chartr(
+    old = letrasComAcentos,
+    new = letrasSemAcentos,
+    x = textoComAcentos
+  ) 
+  
+  # Retorno da funcao
+  return(textoSemAcentos)
+}
+```
+
+###### Para aplicar a função ao nosso banco de dados:
+
+
+```{r}
+licencas <-  licencas %>% 
+  mutate_if(is.character, RemoveAcentos)
+
+```
+
+---
+
+## Tratando os dados para analise
+
+#### 4. Renomeando variáveis
+
+- Para melhor compreensão e trabalho nos códigos iremos alterar os nomes das variáveis.
+
+```{r}
+
+licencas <- licencas %>%
+  rename (tipo_licenca = DES_TIPOLICENCA,
+          num_ano = NUM_LICENCA,
+          empreedimento = NOM_EMPREENDIMENTO, pessoa = NOM_PESSOA,
+          processo_ibama = NUM_PROCESSO_IBAMA, tipologia = DES_TIPOLOGIA)
+
+
+```
+
+
+---
+
+## Adequando as variaveis necessárias para análise
+
+- A variável **tipologia** tem respostas separadas com **-**, desse modo, para limpar as informações é necessário separar as respotas sem prejuízo do entendimento
+
++ Separando os dados da variável **tipologia** e criando a categoria que será usada para analise **tipologia_licenca**'
+
++ A categoria **tipologia_licenca** contém os tipos de empreedimento e atividades licenciados pelo IBAMA e a categoria **tipologia_outro** contém observações que não nos interressam, pois apenas especificam os dados da primeira variável. .
+
+```{r}
+licencas <-  licencas %>%
+  separate(tipologia, c("tipologia_licenca", "tipologia_outro"),
+           sep = "-", extra = "merge", fill = "right")
+
+```
+
+---
+
+## Adequando as variaveis necessárias para análise
+
+
+- A variável **tipo_licenca** especifica em qual etapa (tipo) do licenciamento ambiental o empreedimento ou atividades está. Contudo, a variável é extensa e pode ser categorizada de uma melhor forma: criando duas variáveis uma com a **situação** da licença e outra com o **tipo** da licenca propriamente dito.
+ 
+ + A categoria de **situação** tem como respostas: Anuência, Autorização, Indeferimento, Prorrogação, Renovação e Retificação. Todas relacionadas as licenças.
+ 
+ + A categoria de **tipo** especifica a licença. Sendo as respostas:
+ 
+- INDLINC: Indeferencia de Lincenças
+- LP: Licença Prévia
+- LAU: Licença única (operação e instalação)
+- LO: Licença e Operacação
+- LI: Licença de Instalação
+- ACCTMB: Autorização de Captura e Coleta e Transporte de Material Biológico
+- ASV: Autorização de Supressão de Vegetação
+-LE: Licença Especial
+-AESP: Autorização Especial (Quando o empreendimento não é permanente)
+- LPS: Licença de Pesquisa Sismica
+- AAP: Autorização de Abertura de Picada - - OUT: Anuencias, Autorizaçoes outras
+---
+
+##Executando:
+
+```{r}
+licencas <-  licencas %>%
+  mutate(situacao = case_when(
+    str_detect(tolower(tipo_licenca), "anuencia") ~ "Anuencia",
+    str_detect(tolower(tipo_licenca), "retificacao da renovacao") ~ "Retificacao da Renovacao",
+    str_detect(tolower(tipo_licenca), "retificacao de autorizacao")  ~ "Retificacao",
+    str_detect(tolower(tipo_licenca), "renovacao de autorizacao") ~ "Renovacao",
+    str_detect(tolower(tipo_licenca), "renovacao de licenca") ~ "Renovacao",
+    str_detect(tolower(tipo_licenca), "retificacao da licenca") ~ "Retificacao",
+    str_detect(tolower(tipo_licenca), "retificacao de licenca") ~ "Retificacao",
+    str_detect(tolower(tipo_licenca), "autorizacao") ~ "Autorizacao",
+    str_detect(tolower(tipo_licenca), "autorizacao especial") ~ "Autorizacao Especial",
+    str_detect(tolower(tipo_licenca), "indeferimento") ~ "Indeferimento",
+    str_detect(tolower(tipo_licenca), "prorrogacao") ~ "Prorrogacao",
+    str_detect(tolower(tipo_licenca), "licenca") ~ "Licenca",
+            TRUE ~ tipo_licenca))
+```
+
+---
+
+## Executando: 
+
+```{r}
+licencas <-  licencas %>%
+ mutate(tipo = case_when(
+    str_detect(tolower(tipo_licenca), "indeferimento de licenca") ~ "INDLINC",
+    str_detect(tolower(tipo_licenca), "licenca previa") ~ "LP",
+    str_detect(tolower(tipo_licenca), "licenca de instalacao e operacao") ~ "LAU",
+    str_detect(tolower(tipo_licenca), "licenca de operacao")  ~ "LO",
+    str_detect(tolower(tipo_licenca), "licenca de instalacao") ~ "LI",
+    str_detect(tolower(tipo_licenca), "captura, coleta e transporte de material biologico")
+    ~ "ACCTMB",
+   str_detect(tolower(tipo_licenca), "supressao de vegetacao") ~ "ASV",
+   str_detect(tolower(tipo_licenca), "licenca especial") ~ "LE",
+   str_detect(tolower(tipo_licenca), "especial") ~ "AESP",
+   str_detect(tolower(tipo_licenca), "pesquisa sismica") ~ "LPS",
+   str_detect(tolower(tipo_licenca), "abertura de picada") ~ "AAP",
+   str_detect(tolower(tipo_licenca), "anuencia") ~ "OUT",
+   str_detect(tolower(tipo_licenca), "autorizacao") ~ "OUT",
+   str_detect(tolower(tipo_licenca), "indeferimento") ~ "OUT",
+   TRUE ~ tipo_licenca))
+```
+
+
+---
+
+######Gráfico 1: Relacionando os tipos de documentos do processo de licenciamento com as suas respectivas situações, podemos notar quais tipos são mais retificados, prorrogados, indeferidos e renovados, o que mostra em quais etapadas do licenciamento ambiental podem ocorrer "as burocracias" do processo, geralmente evocadas nos debates sobre a celeridade do processo de licenciamento ambiental
+
+- As cores são acessíveis para pessoas daltônicas
+
+```{r, echo=FALSE}
+dados1 <- licencas %>%
+  select(ano_emissao, ano_validade, situacao, tipo, tipologia_licenca,
+         empreedimento, pessoa)
+```
+
+```{r, echo=FALSE, fig.width=9, fig.height=6}
+
+dados1 %>%
+  filter(situacao %in% c("Prorrogacao", "Retificacao", "Renovacao", "Retificacao da Renovacao", "Indeferimento")) %>%
+  ggplot() +
+  geom_bar(aes(x = tipo, fill =  situacao, color = situacao),
+           position = "stack",
+           alpha=.7,
+           width = .85) +
+  scale_fill_viridis_d(name = "Situação da Licença") +
+  scale_colour_viridis_d() +
+  ggtitle("") +
+  xlab("Tipo de licença") +
+  theme(legend.position = "right") +
+  guides(color = "none")
+  
+  
+```
+
+---
+
+## Criando um novo banco de dados para plotar os gráficos
+
+- Vamos selecionar e filtrar apenas as informações sobre as tipologias de empreendimentos e atividades que passaram pelo **licenciamento trifásico** - Licença Prévia (LP), Licença de Instalação (LI) e Licença de Operação (LO) - entre os anos de 2010 até 2019.
+
+- Vamos criar também uma nova variável de **tempo da licenca**: quanto tempo passa entre a emissao da licenca e a sua validade.
+
+```{r}
+
+dados_licenciamento <- licencas %>%
+  select(emissao, ano_emissao, ano_validade, situacao, tipo, tipologia_licenca,
+         empreedimento, pessoa) %>%
+  filter(situacao %in% c("Licenca"),
+         tipo %in% c("LP", "LI", "LO"),
+         ano_emissao %in% c(2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019)) %>%
+  mutate(tempo_licenca = (ano_validade - ano_emissao))
+```
+
+---
+
+###Tabela do novo banco de dados
+```{r}
+
+kable(head(dados_licenciamento, 10))
+
+```
+
+---
+
+######Grafico 2: Mostra as tipologias de empreedimento e atividades mais licenciados através do **licenciamento trifásico** pelo IBAMA no Brasil entre os anos de 2010 a 2019.
+
+```{r, echo=FALSE}
+
+  ggcharts_set_theme("theme_ng") 
+  bar_chart(data = dados_licenciamento, x = tipologia_licenca) +
+  geom_text(aes(label = n),position = position_dodge(width = 0.9), vjust = -0.25, color = "white") +
+    xlab("Tipologia de Atividades Licenciadas")
+  
+ 
+```
+
+---
+
+######Gráfico 3: Mostra a evolução por ano das tipologias de empreedimento e atividades mais licenciados através do **licenciamento trifásico** pleo IBAMA no Brasil
+
+```{r, echo=FALSE, fig.width=11, fig.height=7}
+
+dados_licenciamento %>%
+  filter(ano_emissao %in% c(2012, 2013, 2014, 2015,2016, 2017, 2018)) %>%
+  bar_chart(x = tipologia_licenca, facet = ano_emissao, top_n = 10) +
+  geom_text(aes(label = n),position = position_dodge(width = 0.9), vjust = -0.1, color = "white") +
+    xlab("Tipologia de Atividades Licenciadas")
+   
+```
+
+
+---
+
+######Gráfico 4: Quanto tempo cada tipologia de empreedimento e atividade demora para completar o **licenciamento trifasico** considerando as retificações e renovação de licença, assim, temos um tempo estimado contando com todos os "entraves" ocorridos.
+
+```{r, echo=FALSE, message=FALSE}
+obj <- licencas %>%
+   select(ano_emissao, ano_validade, situacao, tipo, tipologia_licenca) %>%
+  filter(situacao %in% c("Licenca", "Retificacao", "Autorizacao"),
+         tipo %in% c("LP", "LI", "LO", "ACCTMB", "ASV"),
+         ano_emissao %in% c(2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019)) %>%
+  mutate(tempo_licenca = (ano_validade - ano_emissao))
+  
+```
+
+
+```{r, echo=FALSE, message=FALSE}
+obj_grafico <- obj %>%
+  group_by(tipologia_licenca) %>%
+  summarise(med_tempo = mean(tempo_licenca))
+
+```
+
+
+```{r, echo=FALSE, fig.width=8, fig.height=7}
+
+obj_grafico %>%
+  ggplot(aes(x = med_tempo, fill=med_tempo, y = tipologia_licenca)) +
+  geom_bar(alpha = .75, stat = "identity", position = "dodge2", size = 10) +
+  scale_fill_gradient(low = "yellow",
+                      high = "brown") +
+      xlab("Média do Tempo (em anos)")+
+      ylab("Tipologias de Atividades Licenciadas") +
+  theme_classic() 
+
+```
+
+
+---
+
+# Referências
+
+[Thomas Neitmann - ggchart](https://thomas-neitmann.github.io/ggcharts/index.html)
+
+[Como alterar escalas de cores - daltônicos](https://pt.stackoverflow.com/questions/452569/como-alterar-a-escala-de-cores-em-um-gr%C3%A1fico-no-r)
+
+[Tutorial ggplot](http://r-statistics.co/ggplot2-Tutorial-With-R.html)
+
+[Yihui - knitr](https://yihui.org/knitr/options/#plots)
+
+[Comunicando seus resultados - Beatriz Milz](https://beatrizmilz.github.io/apresentacao_RLadies_xaringan/#27)
